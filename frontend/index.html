@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Video Stream Processing</title>
+  </head>
+  <body>
+    <h1>Identificador de placas</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480"></canvas>
+    <script>
+      var video = document.getElementById("video");
+      var canvas = document.getElementById("canvas");
+      var context = canvas.getContext("2d");
+      var ws = new WebSocket("wss://192.168.1.34:8000/ws");
+
+      ws.onmessage = function (event) {
+        var data = JSON.parse(event.data);
+
+        console.log("Response websocket")
+        console.log("message: " + data.message)
+        console.log("license: " + data.license)
+        console.log("confidence: " + data.confidence)
+        console.log("Response websocket")
+        var image = new Image();
+        image.onload = function () {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        };
+        image.src = "data:image/jpeg;base64," + data.img_data;
+      };
+
+      function initCameras() {
+        console.log(navigator.mediaDevices)
+        if (navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices
+            .getUserMedia({ video: true })
+            .then(function (stream) {
+              video.srcObject = stream;
+              setInterval(() => {
+                context.drawImage(video, 0, 0, 640, 480);
+                canvas.toBlob(function (blob) {
+                  ws.send(blob);
+                }, "image/jpeg");
+              }, 100); // Enviar el frame cada 100ms
+            })
+            .catch(function (error) {
+              console.log("Something went wrong!");
+            });
+        } else {
+          console.log("getUserMedia not supported");
+          alert("getUserMedia not supported");
+        }
+      }
+
+      window.onload = initCameras;
+    </script>
+  </body>
+</html>
